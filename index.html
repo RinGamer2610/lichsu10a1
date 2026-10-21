@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ôn tập lịch sử: Phong trào Phục hưng</title>
+    <style>
+        /* === TỔNG THỂ === */
+        :root {
+            --primary: #2563eb;
+            --hover: #1d4ed8;
+            --success: #10b981;
+            --error: #ef4444;
+            --bg-glass: rgba(255, 255, 255, 0.15);
+            --border-glass: rgba(255, 255, 255, 0.3);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #game-container {
+            width: 900px;
+            height: 600px;
+            position: relative;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            border: 2px solid var(--border-glass);
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* Hình nền chung cho toàn bộ game */
+        .bg-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://commons.wikimedia.org/wiki/Special:FilePath/Florence,_Duomo_di_Firenze.jpg?width=1600') center/cover no-repeat;
+            z-index: 0;
+            transition: filter 0.5s ease;
+        }
+
+        .screen { 
+            width: 100%; 
+            height: 100%; 
+            position: absolute; 
+            top: 0; left: 0; 
+            z-index: 10;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease-in-out, visibility 0.4s;
+        }
+        
+        .screen.active { 
+            opacity: 1; 
+            visibility: visible; 
+        }
+
+        /* --- MÀN HÌNH BẮT ĐẦU --- */
+        #start-screen {
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.8));
+        }
+
+        .curved-svg {
+            width: 100%;
+            height: 250px;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.8));
+            margin-bottom: 10px;
+        }
+
+        .curved-svg text {
+            font-size: 36px;
+            font-weight: 900;
+            fill: #ffde59;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .play-btn {
+            padding: 18px 70px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .play-btn:hover { 
+            transform: translateY(-5px) scale(1.05); 
+            box-shadow: 0 15px 35px rgba(37, 99, 235, 0.6);
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        /* --- MÀN HÌNH BẢN ĐỒ --- */
+        #map-screen { 
+            background: rgba(0,0,0,0.1); /* Sáng hơn để nhìn rõ cảnh */
+        }
+
+        .question-node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(5px);
+            border: 3px solid #60a5fa;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 800;
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.6);
+            transition: all 0.3s ease;
+            animation: pulse-ring 2s infinite;
+        }
+
+        .question-node:hover {
+            transform: scale(1.2) translateY(-10px);
+            background: var(--primary);
+            border-color: #fff;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(96, 165, 250, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
+        }
+
+        .question-node.solved { 
+            background: rgba(16, 185, 129, 0.8);
+            border-color: #34d399;
+            box-shadow: none;
+            animation: none;
+            pointer-events: none; 
+            color: transparent;
+        }
+        
+        .question-node.solved::after { 
+            content: "✓"; 
+            position: absolute; 
+            font-size: 28px; 
+            color: #fff; 
+        }
+
+        /* --- MÀN HÌNH CÂU HỎI --- */
+        #quiz-screen { 
+            background: rgba(15, 23, 42, 0.85); /* Hiệu ứng kính mờ tối */
+            backdrop-filter: blur(15px);
+        }
+
+        #quiz-question {
+            width: 92%;
+            margin: 0 0 12px;
+            color: #fff;
+            font-size: 22px;
+            line-height: 1.25;
+            text-align: center;
+            text-shadow: 1px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .img-wrapper { 
+            width: 520px; 
+            max-width: 88%;
+            height: 235px; 
+            flex: 0 0 auto;
+            background: #000; 
+            margin-bottom: 16px; 
+            border-radius: 15px; 
+            border: 3px solid var(--border-glass);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #quiz-img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            transition: transform 0.5s ease;
+        }
+        
+        #quiz-img:hover {
+            transform: scale(1.05);
+        }
+
+        .options-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 12px; 
+            width: 650px; 
+            max-width: 92%;
+        }
+        
+        .btn-choice { 
+            padding: 12px; 
+            min-height: 58px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px; 
+            color: #fff;
+            font-size: 17px; 
+            line-height: 1.25;
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        .btn-choice:hover:not(:disabled) { 
+            background: rgba(255, 255, 255, 0.25); 
+            transform: translateY(-2px);
+            border-color: #fff;
+        }
+        
+        .btn-choice:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        /* --- MÀN HÌNH KẾT THÚC --- */
+        #end-screen { 
+            background: rgba(16, 185, 129, 0.9);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+        
+        #end-screen h1 {
+            font-size: 50px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        #end-screen p {
+            font-size: 24px;
+            margin-bottom: 40px;
+        }
+
+        /* Message Box */
+        #message-container {
+            height: 36px;
+            margin-top: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #message {
+            font-weight: bold; 
+            font-size: 21px; 
+            padding: 5px 16px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .msg-show { opacity: 1 !important; }
+
+        @media (max-width: 940px) {
+            #game-container { width: 96vw; }
+            .options-grid { width: 92%; }
+            .img-wrapper { width: 78%; }
+        }
+
+        @media (max-height: 650px) {
+            #quiz-question { font-size: 19px; margin-bottom: 8px; }
+            .img-wrapper { height: 190px; margin-bottom: 10px; }
+            .btn-choice { min-height: 48px; padding: 9px; }
+            #message-container { margin-top: 5px; height: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div class="bg-layer" id="main-bg"></div>
+
+        <div id="start-screen" class="screen active">
+            <svg class="curved-svg" viewBox="0 0 1000 300">
+                <path id="curvePath" d="M50,250 Q500,50 950,250" fill="transparent" />
+                <text>
+                    <textPath xlink:href="#curvePath" startOffset="50%" text-anchor="middle">
+                        Ôn lại kiến thức cùng nhóm 8 nho!
+                    </textPath>
+                </text>
+            </svg>
+            <button class="play-btn" onclick="startGame()">BẮT ĐẦU</button>
+        </div>
+
+        <div id="map-screen" class="screen">
+            <div class="question-node" id="question-node-0" style="top: 30%; left: 20%;" onclick="openQuiz(0)">1</div>
+            <div class="question-node" id="question-node-1" style="top: 15%; left: 45%;" onclick="openQuiz(1)">2</div>
+            <div class="question-node" id="question-node-2" style="top: 40%; left: 75%;" onclick="openQuiz(2)">3</div>
+            <div class="question-node" id="question-node-3" style="top: 70%; left: 60%;" onclick="openQuiz(3)">4</div>
+            <div class="question-node" id="question-node-4" style="top: 65%; left: 25%;" onclick="openQuiz(4)">5</div>
+        </div>
+
+        <div id="quiz-screen" class="screen">
+            <h2 id="quiz-question">Câu hỏi</h2>
+            <div class="img-wrapper">
+                <img id="quiz-img" src="" alt="Câu hỏi">
+            </div>
+            <div class="options-grid">
+                <button class="btn-choice" onclick="checkAnswer(0)"></button>
+                <button class="btn-choice" onclick="checkAnswer(1)"></button>
+                <button class="btn-choice" onclick="checkAnswer(2)"></button>
+                <button class="btn-choice" onclick="checkAnswer(3)"></button>
+            </div>
+            <div id="message-container">
+                <p id="message"></p>
+            </div>
+        </div>
+
+        <div id="end-screen" class="screen">
+            <h1>THÀNH CÔNG ỜI! #happyhappy</h1>
+            <p>Yeeee! 10A1 đã chinh phục toàn bộ cái bài này rồiiiii.</p>
+            <button class="play-btn" onclick="location.reload()">Chơi lại#hẻlp</button>
+        </div>
+    </div>
+
+    <script>
+        // Câu hỏi ôn tập về phong trào Phục hưng
+        const quizData = [
+            {
+                question: "Câu 1. Phong trào Phục hưng bắt đầu ở quốc gia nào?",
+                img: "https://commons.wikimedia.org/wiki/Special:FilePath/Florence,_Duomo_di_Firenze.jpg?width=1200",
+                alt: "Nhà thờ chính tòa Florence, công trình tiêu biểu của thời Phục hưng ở Italia",
+                options: ["Pháp", "Italia", "Anh", "Đức"],
+                correct: 1
+            },
+            {
+                question: "Câu 2. Nhà thiên văn học nào đã hệ thống hóa thuyết Nhật tâm?",
+                img: "https://commons.wikimedia.org/wiki/Special:FilePath/Portrait_of_Nicolaus_Copernicus_Wellcome_L0015712.jpg?width=1000",
+                alt: "Chân dung nhà thiên văn học Nicolaus Copernicus",
+                options: ["Ga-li-lê", "Leonardo da Vinci", "Cô-péc-ních", "Đê-các-tơ"],
+                correct: 2
+            },
+            {
+                question: "Câu 3. Ga-li-lê đã cải tiến công cụ nào để quan sát bầu trời?",
+                img: "https://commons.wikimedia.org/wiki/Special:FilePath/Galileo_telescope.jpg?width=1200",
+                alt: "Kính thiên văn của Galileo Galilei",
+                options: ["Kính hiển vi", "Kính thiên văn", "La bàn", "Đồng hồ"],
+                correct: 1
+            },
+            {
+                question: "Câu 4. Tư tưởng chủ đạo của chủ nghĩa nhân văn thời Phục hưng là gì?",
+                img: "https://commons.wikimedia.org/wiki/Special:FilePath/Leonardo_da_Vinci_-_Mona_Lisa.jpg?width=1000",
+                alt: "Mona Lisa, bức chân dung nổi tiếng của Leonardo da Vinci",
+                options: [
+                    "Đề cao con người và giá trị cá nhân",
+                    "Chỉ coi trọng tôn giáo",
+                    "Phủ nhận mọi tri thức khoa học",
+                    "Không khuyến khích sáng tạo"
+                ],
+                correct: 0
+            },
+            {
+                question: "Câu 5. Kĩ thuật in của Gutenberg có tác dụng nổi bật nào?",
+                img: "https://commons.wikimedia.org/wiki/Special:FilePath/Gutenberg_press.png?width=1000",
+                alt: "Mô hình máy in Gutenberg với kỹ thuật chữ rời",
+                options: [
+                    "Giúp tàu thuyền đi nhanh hơn",
+                    "Giúp sách được sao chép nhanh và tri thức lan truyền rộng rãi",
+                    "Giúp con người khám phá các hành tinh",
+                    "Giúp chế tạo kính thiên văn"
+                ],
+                correct: 1
+            }
+        ];
+
+        let solvedCount = 0;
+        let currentIdx = -1;
+        let isSolved = [false, false, false, false, false];
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            // Làm mờ nền chính khi vào màn hình câu hỏi
+            const bg = document.getElementById('main-bg');
+            if(id === 'quiz-screen') {
+                bg.style.filter = 'blur(8px) brightness(0.6)';
+            } else if (id === 'end-screen') {
+                bg.style.filter = 'blur(4px) brightness(0.4)';
+            } else {
+                bg.style.filter = 'blur(0px) brightness(1)';
+            }
+        }
+
+        function startGame() { 
+            showScreen('map-screen'); 
+        }
+
+        function openQuiz(idx) {
+            currentIdx = idx;
+            const data = quizData[idx];
+            
+            document.getElementById('quiz-question').innerText = data.question;
+            const quizImg = document.getElementById('quiz-img');
+            quizImg.src = data.img;
+            quizImg.alt = data.alt;
+            
+            const btns = document.querySelectorAll('.btn-choice');
+            btns.forEach((btn, i) => {
+                btn.innerText = data.options[i];
+                btn.style.background = "var(--bg-glass)";
+                btn.style.borderColor = "var(--border-glass)";
+                btn.style.color = "#fff";
+                btn.disabled = false;
+            });
+            
+            const msg = document.getElementById('message');
+            msg.innerText = "";
+            msg.classList.remove('msg-show');
+            msg.style.background = "transparent";
+            
+            showScreen('quiz-screen');
+        }
+
+        function checkAnswer(selected) {
+            const data = quizData[currentIdx];
+            const msg = document.getElementById('message');
+            const btns = document.querySelectorAll('.btn-choice');
+            
+            // Khóa các nút
+            btns.forEach(btn => btn.disabled = true);
+            msg.classList.add('msg-show');
+            
+            if (selected === data.correct) {
+                msg.innerText = "Đúng ời! 🎉";
+                msg.style.color = "#fff";
+                msg.style.background = "var(--success)";
+                
+                btns[selected].style.background = "var(--success)";
+                btns[selected].style.borderColor = "#fff";
+                
+                if (!isSolved[currentIdx]) {
+                    isSolved[currentIdx] = true;
+                    solvedCount++;
+                    document.getElementById(`question-node-${currentIdx}`).classList.add('solved');
+                }
+
+                setTimeout(() => {
+                    if (solvedCount === 5) showScreen('end-screen');
+                    else showScreen('map-screen');
+                }, 1500);
+            } else {
+                msg.innerText = "Sai Rầu! ❌";
+                msg.style.color = "#fff";
+                msg.style.background = "var(--error)";
+                
+                btns[selected].style.background = "var(--error)";
+                btns[selected].style.borderColor = "#fff";
+                
+                // Hiển thị đáp án đúng
+                btns[data.correct].style.background = "var(--success)";
+                
+                setTimeout(() => showScreen('map-screen'), 2000);
+            }
+        }
+    </script>
+</body>
+</html>
